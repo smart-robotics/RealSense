@@ -557,7 +557,7 @@ void BaseRealSenseNode::setupStreams()
                         ROS_WARN("Frame metadata isn't available! (frame_timestamp_domain = RS2_TIMESTAMP_DOMAIN_SYSTEM_TIME)");
 
                     _intialize_time_base = true;
-                    _ros_time_base = ros::Time::now();
+                    _ros_time_base = ros::Time((double)(std::chrono::high_resolution_clock::now().time_since_epoch().count() * std::chrono::system_clock::period::num) / std::chrono::system_clock::period::den);
                     _camera_time_base = frame.get_timestamp();
                 }
 
@@ -576,8 +576,12 @@ void BaseRealSenseNode::setupStreams()
                 // Taking just the ROS time leads to incorrect timestamps, especially at higher CPU loads.
                 // Taking the frame timestamp is better, however the time clock of the camera is running faster than real time.
                 // Therefore the system clock should be used to sync the camera images with other components.
-                t = ros::Time((double)(std::chrono::high_resolution_clock::now().time_since_epoch().count() * std::chrono::system_clock::period::num) / std::chrono::system_clock::period::den);
-				
+//                t = ros::Time((double)(std::chrono::high_resolution_clock::now().time_since_epoch().count() * std::chrono::system_clock::period::num) / std::chrono::system_clock::period::den);
+//                double t_diff = (_ros_time_base.toSec() + (/*ms*/ frame.get_timestamp() - /*ms*/ _camera_time_base) / /*ms to seconds*/ 1000) - t.toSec() - (frame.get_frame_number()*0.0000027898);
+//				std::cout << frame.get_frame_number() << "," << t_diff*1000 << std::endl;
+
+				// Use camera timestamp with the average drift per frame subtracted. (This is probably still not accurate so a resync moment should be taken)
+				t = ros::Time((_ros_time_base.toSec() + (/*ms*/ frame.get_timestamp() - /*ms*/ _camera_time_base) / /*ms to seconds*/ 1000) - (0.0000027898*frame.get_frame_number()));
                 std::map<stream_index_pair, bool> is_frame_arrived(_is_frame_arrived);
                 std::vector<rs2::frame> frames;
                 if (frame.is<rs2::frameset>())
