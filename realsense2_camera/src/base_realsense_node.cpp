@@ -548,6 +548,10 @@ void BaseRealSenseNode::setupStreams()
         auto frame_callback = [this](rs2::frame frame)
         {
             try{
+                if (frame.get_frame_number() % 108000 == 0) {
+                    _intialize_time_base = false;
+                }
+
                 // We compute a ROS timestamp which is based on an initial ROS time at point of first frame,
                 // and the incremental timestamp from the camera.
                 // In sync mode the timestamp is based on ROS time
@@ -576,12 +580,12 @@ void BaseRealSenseNode::setupStreams()
                 // Taking just the ROS time leads to incorrect timestamps, especially at higher CPU loads.
                 // Taking the frame timestamp is better, however the time clock of the camera is running faster than real time.
                 // Therefore the system clock should be used to sync the camera images with other components.
-//                t = ros::Time((double)(std::chrono::high_resolution_clock::now().time_since_epoch().count() * std::chrono::system_clock::period::num) / std::chrono::system_clock::period::den);
-//                double t_diff = (_ros_time_base.toSec() + (/*ms*/ frame.get_timestamp() - /*ms*/ _camera_time_base) / /*ms to seconds*/ 1000) - t.toSec() - (frame.get_frame_number()*0.0000027898);
-//				std::cout << frame.get_frame_number() << "," << t_diff*1000 << std::endl;
+                t = ros::Time((double)(std::chrono::high_resolution_clock::now().time_since_epoch().count() * std::chrono::system_clock::period::num) / std::chrono::system_clock::period::den);
+                double t_diff = (_ros_time_base.toSec() + (/*ms*/ frame.get_timestamp() - /*ms*/ _camera_time_base) / /*ms to seconds*/ 1000) - t.toSec() - (frame.get_frame_number()*0.0000027898);
+				std::cout << frame.get_frame_number() << "," << t_diff*1000 << std::endl;
 
 				// Use camera timestamp with the average drift per frame subtracted. (This is probably still not accurate so a resync moment should be taken)
-				t = ros::Time((_ros_time_base.toSec() + (/*ms*/ frame.get_timestamp() - /*ms*/ _camera_time_base) / /*ms to seconds*/ 1000) - (0.0000027898*frame.get_frame_number()));
+				t = ros::Time((_ros_time_base.toSec() + (/*ms*/ frame.get_timestamp() - /*ms*/ _camera_time_base) / /*ms to seconds*/ 1000) - (0.00000311*frame.get_frame_number()));
                 std::map<stream_index_pair, bool> is_frame_arrived(_is_frame_arrived);
                 std::vector<rs2::frame> frames;
                 if (frame.is<rs2::frameset>())
