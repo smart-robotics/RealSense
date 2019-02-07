@@ -60,7 +60,7 @@ void RealSenseNodeFactory::onInit()
         else
         {
 			// HACK: For now, assume there is only a single device and don't check for serial numbers
-			/**
+
 			auto list = _ctx.query_devices();
 			if (0 == list.size())
 			{
@@ -73,7 +73,7 @@ void RealSenseNodeFactory::onInit()
 			for (auto&& dev : list)
 			{
 				auto sn = dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
-				ROS_DEBUG_STREAM("Device with serial number " << sn << " was found.");
+				ROS_INFO_STREAM("Device with serial number " << sn << " was found.");
 				if (serial_no.empty())
 				{
 					_device = dev;
@@ -95,18 +95,63 @@ void RealSenseNodeFactory::onInit()
 				ros::shutdown();
 				exit(1);
 			} 
-			*/
-			
+
+            auto sn = _device.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
+
+			ROS_INFO_STREAM(" Device with serial number " << sn << " is being used.");
 			// HACK: Do a hardware reset of the camera and wait for a fixed time
-			_device = _ctx.query_devices().front(); // Reset the first device
+			//_device = _ctx.query_devices().front(); // Reset the first device
 			int hardware_reset_time = 9; // Testing showed that 8 seconds was too short. Exact time unkown, 9 sec seems to work.
 			ROS_INFO("Device is being hardware reset for %d seconds", hardware_reset_time);
 			_device.hardware_reset();
 			usleep(hardware_reset_time * 1000000);
-			rs2::device_hub hub(_ctx);
-			_device = hub.wait_for_device();
+//			rs2::device_hub hub(_ctx);
+//			_device = hub.wait_for_device();
+//////////////////////////////////////////////////////////Jeroen&Kenji//////////////////////////////////////////////////
+            list = _ctx.query_devices();
 
-			_ctx.set_devices_changed_callback([this](rs2::event_information& info)
+			if (0 == list.size())
+			{
+				ROS_ERROR("No RealSense devices were found! Terminating RealSense Node...");
+				ros::shutdown();
+				exit(1);
+			}
+
+			found = false;
+			for (auto&& dev : list)
+			{
+				auto sn = dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
+				ROS_INFO_STREAM("Device with serial number " << sn << " was found.");
+				if (serial_no.empty())
+				{
+					_device = dev;
+					serial_no = sn;
+					found = true;
+					break;
+				}
+				else if (sn == serial_no)
+				{
+					_device = dev;
+					found = true;
+					break;
+				}
+			}
+
+			if (!found)
+			{
+				ROS_FATAL_STREAM("The requested device with serial number " << serial_no << " is NOT found!");
+				ros::shutdown();
+				exit(1);
+			}
+
+            sn = _device.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
+
+			ROS_INFO_STREAM(" Device with serial number " << sn << " is being used.");
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            _ctx.set_devices_changed_callback([this](rs2::event_information& info)
 			{
 				if (info.was_removed(_device))
 				{
