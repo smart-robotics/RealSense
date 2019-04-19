@@ -18,9 +18,11 @@
       <arg name="enable_infra1"     value="false"/>
       <arg name="enable_infra2"     value="false"/>
       <arg name="enable_fisheye"    value="false"/>
-      <arg name="enable_imu"        value="false"/>
+      <arg name="enable_gyro"       value="false"/>
+      <arg name="enable_accel"      value="false"/>
       <arg name="enable_pointcloud" value="true"/>
       <arg name="enable_sync"       value="true"/>
+      <arg name="tf_prefix"         value="$(arg camera)"/>
     </include>
 
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find realsense2_camera)/rviz/pointcloud.rviz" required="true" />
