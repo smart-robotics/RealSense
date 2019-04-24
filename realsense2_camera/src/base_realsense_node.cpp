@@ -1446,9 +1446,6 @@ void BaseRealSenseNode::frame_callback(rs2::frame frame)
         // Therefore the system clock should be used to sync the camera images with other components.
         t = ros::Time((double)(std::chrono::high_resolution_clock::now().time_since_epoch().count() * std::chrono::system_clock::period::num) / std::chrono::system_clock::period::den);
 
-        std::map<stream_index_pair, bool> is_frame_arrived(_is_frame_arrived);
-        std::vector<rs2::frame> frames;
-
         if (frame.is<rs2::frameset>())
         {
             ROS_DEBUG("Frameset arrived.");
