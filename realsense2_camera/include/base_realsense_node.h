@@ -111,9 +111,9 @@ namespace realsense2_camera
     protected:
 //        const uint32_t set_default_dynamic_reconfig_values = 0xffffffff;
 //        rs2::device _dev;
-//        rs2::context _ctx;
+        rs2::context _ctx;
 //        ros::NodeHandle& _node_handle, _pnh;
-//        ros::Timer _timer;
+        ros::Timer _timer;
 //        std::map<stream_index_pair, rs2::sensor> _sensors;
         class float3
         {
@@ -197,7 +197,7 @@ namespace realsense2_camera
         void enable_devices();
         void setupFilters();
         void setupStreams();
-//        void publishStatus(const ros::TimerEvent& event);
+        void publishStatus(const ros::TimerEvent& event);
         void setBaseTime(double frame_time, bool warn_no_metadata);
         cv::Mat& fix_depth_scale(const cv::Mat& from_image, cv::Mat& to_image);
         void clip_depth(rs2::depth_frame depth_frame, float clipping_dist);

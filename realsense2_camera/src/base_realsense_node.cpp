@@ -130,10 +130,11 @@ BaseRealSenseNode::BaseRealSenseNode(ros::NodeHandle& nodeHandle,
 //    _unit_step_size[ACCEL] = sizeof(uint8_t); // sensor_msgs::ImagePtr row step size
 //    _stream_name[ACCEL] = "accel";
 //
-//    // Set up timed callback for diagnotics
-//    _last_time_cam_was_ok = ros::Time::now();
-//    _cam_ok_timeout = 1.0;
-//    _timer = _node_handle.createTimer(ros::Duration(1.0), &BaseRealSenseNode::publishStatus, this);
+    // Set up timed callback for diagnotics
+    _last_time_cam_was_ok = ros::Time::now();
+    _cam_ok_timeout = 1.0;
+    _timer = _node_handle.createTimer(ros::Duration(1.0), &BaseRealSenseNode::publishStatus, this);
+
     _stream_name[RS2_STREAM_GYRO] = "gyro";
 
     _stream_name[RS2_STREAM_ACCEL] = "accel";
@@ -1064,41 +1065,6 @@ BaseRealSenseNode::CIMUHistory::imuData BaseRealSenseNode::CIMUHistory::imuData:
     return new_data;
 }
 
-//void BaseRealSenseNode::publishStatus(const ros::TimerEvent& event)
-//{
-//    diagnostic_msgs::DiagnosticStatus cameraStatus;
-//    cameraStatus.name = "realsense_camera";
-//    cameraStatus.hardware_id = _serial_no;
-//    auto dev = _ctx.query_devices();
-//
-//    bool cam_is_ok = (ros::Time::now() - _last_time_cam_was_ok).toSec() < _cam_ok_timeout;
-//
-//    if (dev.size() > 0)
-//    {
-//        if (cam_is_ok)
-//        {
-//            cameraStatus.level = diagnostic_msgs::DiagnosticStatus::OK;
-//            cameraStatus.message = "OK";
-//        }
-//        else
-//        {
-//            cameraStatus.level = diagnostic_msgs::DiagnosticStatus::ERROR;
-//            cameraStatus.message = "Camera connected, but no frames arriving";
-//        }
-//    }
-//    else
-//    {
-//        cameraStatus.level = diagnostic_msgs::DiagnosticStatus::STALE;
-//        cameraStatus.message = "Camera disconnected";
-//    }
-//
-//    diagnostic_msgs::DiagnosticArray diagnostics_msg;
-//    diagnostics_msg.header.stamp = ros::Time::now();
-//    diagnostics_msg.status.push_back(cameraStatus);
-//    _statusPublisher.publish(diagnostics_msg);
-//}
-//
-//void BaseRealSenseNode::setupStreams()
 BaseRealSenseNode::CIMUHistory::imuData BaseRealSenseNode::CIMUHistory::imuData::operator+(const BaseRealSenseNode::CIMUHistory::imuData& other)
 {
     BaseRealSenseNode::CIMUHistory::imuData new_data(*this);
@@ -1448,6 +1414,9 @@ void BaseRealSenseNode::frame_callback(rs2::frame frame)
 
         if (frame.is<rs2::frameset>())
         {
+            // Diagnostics: the camera is oke.
+            _last_time_cam_was_ok = ros::Time::now();
+
             ROS_DEBUG("Frameset arrived.");
             bool is_depth_arrived = false;
             auto frameset = frame.as<rs2::frameset>();
@@ -1538,6 +1507,7 @@ void BaseRealSenseNode::frame_callback(rs2::frame frame)
                 ROS_DEBUG("Frameset contain (%s, %d, %s) frame. frame_number: %llu ; frame_TS: %f ; ros_TS(NSec): %lu",
                             rs2_stream_to_string(stream_type), stream_index, rs2_format_to_string(stream_format), frame.get_frame_number(), frame_time, t.toNSec());
 
+
                 if (f.is<rs2::points>())
                 {
                     if (0 != _pointcloud_publisher.getNumSubscribers())
@@ -1565,6 +1535,9 @@ void BaseRealSenseNode::frame_callback(rs2::frame frame)
         }
         else if (frame.is<rs2::video_frame>())
         {
+            // Diagnostics: the camera is oke.
+            _last_time_cam_was_ok = ros::Time::now();
+
             auto stream_type = frame.get_profile().stream_type();
             auto stream_index = frame.get_profile().stream_index();
             ROS_DEBUG("Single video frame arrived (%s, %d). frame_number: %llu ; frame_TS: %f ; ros_TS(NSec): %lu",
@@ -1618,6 +1591,40 @@ void BaseRealSenseNode::setBaseTime(double frame_time, bool warn_no_metadata)
 
     _ros_time_base = ros::Time::now();
     _camera_time_base = frame_time;
+}
+
+void BaseRealSenseNode::publishStatus(const ros::TimerEvent& event)
+{
+    diagnostic_msgs::DiagnosticStatus cameraStatus;
+    cameraStatus.name = "realsense_camera";
+    cameraStatus.hardware_id = _serial_no;
+    auto dev = _ctx.query_devices();
+
+    bool cam_is_ok = (ros::Time::now() - _last_time_cam_was_ok).toSec() < _cam_ok_timeout;
+
+    if (dev.size() > 0)
+    {
+        if (cam_is_ok)
+        {
+            cameraStatus.level = diagnostic_msgs::DiagnosticStatus::OK;
+            cameraStatus.message = "OK";
+        }
+        else
+        {
+            cameraStatus.level = diagnostic_msgs::DiagnosticStatus::ERROR;
+            cameraStatus.message = "Camera connected, but no frames arriving";
+        }
+    }
+    else
+    {
+        cameraStatus.level = diagnostic_msgs::DiagnosticStatus::STALE;
+        cameraStatus.message = "Camera disconnected";
+    }
+
+    diagnostic_msgs::DiagnosticArray diagnostics_msg;
+    diagnostics_msg.header.stamp = ros::Time::now();
+    diagnostics_msg.status.push_back(cameraStatus);
+    _statusPublisher.publish(diagnostics_msg);
 }
 
 void BaseRealSenseNode::setupStreams()
@@ -1952,12 +1959,15 @@ void BaseRealSenseNode::publishPointCloud(rs2::points pc, const ros::Time& t, co
         }
     }
 
+
     sensor_msgs::PointCloud2 msg_pointcloud;
     msg_pointcloud.header.stamp = t;
     msg_pointcloud.header.frame_id = _optical_frame_id[DEPTH];
     msg_pointcloud.width = num_valid_points;
     msg_pointcloud.height = 1;
     msg_pointcloud.is_dense = true;
+
+
 
     sensor_msgs::PointCloud2Modifier modifier(msg_pointcloud);
     modifier.setPointCloud2FieldsByString(1, "xyz");    
