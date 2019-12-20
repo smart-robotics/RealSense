@@ -2,7 +2,7 @@
   <arg name="manager"             default="realsense2_camera_manager"/>
   <arg name="serial_no"           default=""/>
   <arg name="tf_prefix"           default=""/>
-  <arg name="json_file_path"      default=""/>
+  <arg name="json_file_path"      default="/home/jeroen/Desktop/high_accuracy.json"/>
   <arg name="rosbag_filename"     default=""/>
 
   <arg name="fisheye_width"       default="0"/>
@@ -33,12 +33,12 @@
   <arg name="enable_gyro"         default="true"/>
   <arg name="enable_accel"        default="true"/>
 
-  <arg name="enable_pointcloud"   default="false"/>
+  <arg name="enable_pointcloud"   default="true"/>
   <arg name="pointcloud_texture_stream" default="RS2_STREAM_COLOR"/>  <!-- use RS2_STREAM_ANY to avoid using texture -->
   <arg name="pointcloud_texture_index"  default="0"/>
 
-  <arg name="enable_sync"         default="false"/>
-  <arg name="align_depth"         default="false"/>
+  <arg name="enable_sync"         default="true"/>
+  <arg name="align_depth"         default="true"/>
 
   <arg name="base_frame_id"             default="$(arg tf_prefix)_link"/>
   <arg name="depth_frame_id"            default="$(arg tf_prefix)_depth_frame"/>
