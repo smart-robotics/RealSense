@@ -86,6 +86,6 @@ librealsense-log.txt
 *.list
 *.json
 *.ini
-*.cxx
-
-.vscode/*
+.idea/
+.vs/
+*.json

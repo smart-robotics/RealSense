@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 This project uses code from the following third-party projects, listed here
 with the full text of their respective licenses.
 
@@ -900,3 +901,9 @@ necessary.  Here is a sample; alter the names:
   Ty Coon, President of Vice
 
 That's all there is to it!
+=======
+This project uses code from the following third-party projects, listed here
+with the full text of their respective licenses.
+
+ddynamic_reconfigure (BSD) - https://github.com/awesomebytes/ddynamic_reconfigure
+>>>>>>> 3ab5077763e980ae72c0c29aec4a697067d43744
