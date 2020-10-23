@@ -124,6 +124,11 @@ BaseRealSenseNode::BaseRealSenseNode(ros::NodeHandle& nodeHandle,
     _stream_name[RS2_STREAM_POSE] = "pose";
 
     _monitor_options = {RS2_OPTION_ASIC_TEMPERATURE, RS2_OPTION_PROJECTOR_TEMPERATURE};
+
+    // Set up timed callback for diagnotics
+    _last_time_cam_was_ok = ros::Time::now();
+    _cam_ok_timeout = 1.0;
+    _timer = _node_handle.createTimer(ros::Duration(1.0), &BaseRealSenseNode::publishStatus, this);
 }
 
 BaseRealSenseNode::~BaseRealSenseNode()
@@ -1017,6 +1022,40 @@ void BaseRealSenseNode::enable_devices()
     }
 }
 
+void BaseRealSenseNode::publishStatus(const ros::TimerEvent& event)
+{
+    diagnostic_msgs::DiagnosticStatus cameraStatus;
+    cameraStatus.name = "realsense_camera";
+    cameraStatus.hardware_id = _serial_no;
+    auto dev = _ctx.query_devices();
+
+    bool cam_is_ok = (ros::Time::now() - _last_time_cam_was_ok).toSec() < _cam_ok_timeout;
+
+    if (dev.size() > 0)
+    {
+        if (cam_is_ok)
+        {
+            cameraStatus.level = diagnostic_msgs::DiagnosticStatus::OK;
+            cameraStatus.message = "OK";
+        }
+        else
+        {
+            cameraStatus.level = diagnostic_msgs::DiagnosticStatus::ERROR;
+            cameraStatus.message = "Camera connected, but no frames arriving";
+        }
+    }
+    else
+    {
+        cameraStatus.level = diagnostic_msgs::DiagnosticStatus::STALE;
+        cameraStatus.message = "Camera disconnected";
+    }
+
+    diagnostic_msgs::DiagnosticArray diagnostics_msg;
+    diagnostics_msg.header.stamp = ros::Time::now();
+    diagnostics_msg.status.push_back(cameraStatus);
+    _statusPublisher.publish(diagnostics_msg);
+}
+
 void BaseRealSenseNode::setupFilters()
 {
     std::vector<std::string> filters_str;
@@ -1466,14 +1505,11 @@ void BaseRealSenseNode::frame_callback(rs2::frame frame)
         }
 
         ros::Time t;
-        if (_sync_frames)
-        {
-            t = ros::Time::now();
-        }
-        else
-        {
-            t = ros::Time(_ros_time_base.toSec()+ (/*ms*/ frame_time - /*ms*/ _camera_time_base) / /*ms to seconds*/ 1000);
-        }
+
+        // Taking just the ROS time leads to incorrect timestamps, especially at higher CPU loads.
+        // Taking the frame timestamp is better, however the time clock of the camera is running faster than real time.
+        // Therefore the system clock should be used to sync the camera images with other components.
+        t = ros::Time((double)(std::chrono::high_resolution_clock::now().time_since_epoch().count() * std::chrono::system_clock::period::num) / std::chrono::system_clock::period::den);
 
         if (frame.is<rs2::frameset>())
         {
@@ -1570,6 +1606,9 @@ void BaseRealSenseNode::frame_callback(rs2::frame frame)
 
                 if (f.is<rs2::points>())
                 {
+                    // If pointcloud exists, the camera is ok
+                    _last_time_cam_was_ok = ros::Time::now();
+
                     if (0 != _pointcloud_publisher.getNumSubscribers())
                     {
                         ROS_DEBUG("Publish pointscloud");

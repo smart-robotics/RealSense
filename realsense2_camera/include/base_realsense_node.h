@@ -8,6 +8,7 @@
 
 #include <diagnostic_updater/diagnostic_updater.h>
 #include <diagnostic_updater/update_functions.h>
+#include <diagnostic_msgs/DiagnosticArray.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
@@ -38,8 +39,11 @@ namespace realsense2_camera
 
       void update()
       {
+        // Disable status update. Use custom status publishing
+        /*
         frequency_status_.tick();
         diagnostic_updater_.update();
+        */
       }
 
       double expected_frequency_;
@@ -168,7 +172,8 @@ namespace realsense2_camera
                                const tf::Quaternion& q,
                                const std::string& from,
                                const std::string& to);
-
+        rs2::context _ctx;
+        ros::Timer _timer;
 
     private:
         class CimuData
@@ -238,6 +243,7 @@ namespace realsense2_camera
         rs2_stream rs2_string_to_stream(std::string str);
         void startMonitoring();
         void publish_temperature();
+        void publishStatus(const ros::TimerEvent& event);
 
         rs2::device _dev;
         std::map<stream_index_pair, rs2::sensor> _sensors;
@@ -249,6 +255,8 @@ namespace realsense2_camera
         float _depth_scale_meters;
         float _clipping_distance;
         bool _allow_no_texture_points;
+        ros::Time _last_time_cam_was_ok;
+        float _cam_ok_timeout;
 
         double _linear_accel_cov;
         double _angular_velocity_cov;
@@ -283,6 +291,7 @@ namespace realsense2_camera
         double _camera_time_base;
         std::map<stream_index_pair, std::vector<rs2::stream_profile>> _enabled_profiles;
 
+        ros::Publisher _statusPublisher;
         ros::Publisher _pointcloud_publisher;
         ros::Time _ros_time_base;
         bool _sync_frames;
